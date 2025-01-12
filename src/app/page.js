@@ -1,101 +1,194 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState } from "react";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [file, setFile] = useState(null);
+  const [punctuationCounts, setPunctuationCounts] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // List of all 18 punctuation marks
+  const punctuationMarks = [
+    "apostrophes",
+    "colons",
+    "commas",
+    "curly_brackets",
+    "double_inverted_commas",
+    "ellipses",
+    "em_dashes",
+    "en_dashes",
+    "exclamation_marks",
+    "full_stops",
+    "hyphens",
+    "other_punctuation_marks",
+    "question_marks",
+    "round_brackets",
+    "semicolons",
+    "slashes",
+    "square_brackets",
+    "vertical_bars",
+  ];
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
+  const handleUpload = async () => {
+    if (!file) return alert("Please upload a CSV file!");
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("https://punctuation-omdx.vercel.app/process-file", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      // Ensure all punctuation marks are included, with a default count of 0
+      const normalizedData = punctuationMarks.reduce((acc, mark) => {
+        acc[mark] = data.punctuation_counts[mark] || 0;
+        return acc;
+      }, {});
+
+      setPunctuationCounts(normalizedData);
+      console.log(normalizedData);
+    } catch (error) {
+      alert("Error uploading file. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Chart Data and Options
+  const chartData = punctuationCounts
+    ? {
+        labels: punctuationMarks.map((mark) => mark.replace(/_/g, " ")),
+        datasets: [
+          {
+            label: "Punctuation Count",
+            data: punctuationMarks.map((mark) => punctuationCounts[mark]),
+            backgroundColor: [
+              "#FF6F61", "#6B5B95", "#88B04B", "#F7CAC9", "#92A8D1",
+              "#034F84", "#F7786B", "#DE93BA", "#A1C8E9", "#D94F70",
+              "#45B8AC", "#EFC050", "#5B5EA6", "#9B2335", "#E15D44",
+              "#7FCDCD", "#BC243C", "#4A4E4D",
+            ],
+            borderWidth: 1,
+          },
+        ],
+      }
+    : {
+        labels: [],
+        datasets: [],
+      };
+
+  const maxCount = punctuationCounts
+    ? Math.ceil(Math.max(...Object.values(punctuationCounts)) / 1000) * 1000
+    : 0;
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "right",
+        labels: {
+          usePointStyle: true,
+          boxWidth: 10,
+          color: "#FFFFFF",
+        },
+      },
+      title: {
+        display: true,
+        text: "Punctuation Analysis",
+        font: {
+          size: 22,
+          weight: "bold",
+        },
+        color: "#FFFFFF",
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Punctuation Type",
+          font: { size: 14, color: "#FFFFFF" },
+        },
+        ticks: { color: "#FFFFFF" },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Count",
+          font: { size: 14, color: "#FFFFFF" },
+        },
+        beginAtZero: true,
+        max: maxCount,
+        ticks: { color: "#FFFFFF" },
+      },
+    },
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-900 text-gray-200">
+      <h1 className="text-4xl font-bold text-white mb-8">Punctuation Analyzer</h1>
+      <div className="flex flex-col items-center gap-4 w-full max-w-lg">
+        <input
+          type="file"
+          accept=".csv"
+          onChange={handleFileChange}
+          className="block w-full text-sm text-gray-300 border border-gray-600 rounded-lg cursor-pointer bg-gray-800 focus:outline-none hover:bg-gray-700 hover:shadow-lg transition"
+        />
+        <button
+          onClick={handleUpload}
+          disabled={loading}
+          className={`px-6 py-2 rounded-lg text-white font-semibold ${
+            loading
+              ? "bg-gray-600 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-500 hover:shadow-md transition"
+          }`}
+        >
+          {loading ? "Analyzing..." : "Upload and Analyze"}
+        </button>
+      </div>
+
+      {punctuationCounts && (
+        <div className="mt-10 w-full max-w-2xl bg-gray-800 p-6 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-semibold text-white mb-4">
+            Punctuation Count Results
+          </h2>
+          <div className="flex flex-col gap-4">
+            {Object.entries(punctuationCounts).map(([key, value]) => (
+              <div key={key} className="flex justify-between text-gray-300 border-b py-2">
+                <span className="capitalize">{String(key).replace(/_/g, " ")}</span>
+                <span className="font-semibold">{String(value)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6">
+            <h3 className="text-xl font-medium text-gray-200 mb-4">
+              Punctuation Distribution
+            </h3>
+            <Bar data={chartData} options={chartOptions} />
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
     </div>
   );
 }
