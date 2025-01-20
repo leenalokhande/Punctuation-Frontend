@@ -10,7 +10,7 @@ import {
   Title,
   Tooltip,
   Legend,
-} from "chart.js";
+} from "chart.js";                                                     
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -151,7 +151,7 @@ export default function Home() {
       <div className="flex flex-col items-center gap-4 w-full max-w-lg">
         <input
           type="file"
-          accept=".csv"
+          accept="*/*"
           onChange={handleFileChange}
           className="block w-full text-sm text-gray-300 border border-gray-600 rounded-lg cursor-pointer bg-gray-800 focus:outline-none hover:bg-gray-700 hover:shadow-lg transition"
         />
